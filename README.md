@@ -112,15 +112,33 @@ npm run dev        # http://localhost:3000
 npm run build && npm run start
 ```
 
-## 部署
+## 部署（腾讯云轻量 / 任意 Linux）
 
-已内置 Docker 一键部署（app + nginx）：
+已内置 Docker 一键部署（app + nginx）。服务器首次使用先装 Docker：
 
 ```bash
-git clone https://github.com/SupperPie/Atoms_Demo.git
-cd Atoms_Demo
-./deploy.sh        # git pull + docker compose up -d --build
+curl -fsSL https://get.docker.com | sudo sh
+sudo systemctl enable --now docker
 ```
+
+拉代码并配置模型：
+
+```bash
+sudo mkdir -p /opt && sudo chown $USER:$USER /opt
+git clone https://github.com/SupperPie/Atoms_Demo.git /opt/atoms-mini
+cd /opt/atoms-mini
+
+cp .env.example .env
+vi .env        # 至少填 LLM_API_KEY，按需改 LLM_BASE_URL / LLM_MODEL
+```
+
+启动：
+
+```bash
+./deploy.sh    # git pull + docker compose up -d --build
+```
+
+`.env` 已被 `.gitignore` 忽略，compose 会自动读取并注入容器，不会打进镜像。后续更新代码执行 `./deploy.sh`；只改 `.env` 也执行一次 `./deploy.sh` 让容器重新读取。生成一次约 2-3 分钟，可在 `docker compose logs -f app` 观察调用情况。
 
 服务器首次部署前放行 80 端口。如果宿主机已有 nginx 占用 80，先停掉它，或把 [docker-compose.yml](docker-compose.yml) 的端口改成 `127.0.0.1:8080:80` 再由宿主机反代。
 
@@ -142,7 +160,7 @@ cp .env.example .env.local
 
 调用方式：PM 产出结构化产品稿 → Dev 依据产品稿生成完整单文件 HTML（含至少一个真实交互）→ Ops 读取 PM 简报与自检结果产出企划。任一环节超时或返回异常时自动回退到内置模板，SSE 事件协议与前端完全不变。
 
-Docker 部署时把 `.env` 放在项目根目录即可，compose 会自动注入；改完配置执行 `./deploy.sh` 重建生效。
+本地开发把配置写进 `.env.local`（已忽略）；服务器部署写进 `.env`，compose 会自动注入。修改配置后本地需重启 `npm run dev`，服务器执行 `./deploy.sh`。
 
 ## 演示边界
 

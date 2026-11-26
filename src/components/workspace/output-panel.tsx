@@ -285,7 +285,7 @@ function PlanView({ plan }: { plan: BusinessPlan }) {
             Business Plan
           </span>
           <Badge className="border-violet-400/20 bg-violet-500/10 text-[9.5px] text-violet-200">
-            mock / 可替换 LLM
+            AI 生成
           </Badge>
         </div>
         <div className="mt-2.5 flex items-baseline gap-2">

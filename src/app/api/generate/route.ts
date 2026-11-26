@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
       try {
         controller.enqueue(encoder.encode(": connected\n\n"));
-        for await (const event of generate(idea, { resumeFrom })) {
+        for await (const event of generate(idea, { resumeFrom, signal: req.signal })) {
           if (req.signal.aborted) {
             closed = true;
             break;

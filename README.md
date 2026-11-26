@@ -40,6 +40,8 @@ Atoms-Mini 用 mock 数据模拟「多智能体 AI 软件公司」的完整交�
 
 协作方式是**顺次调用**：PM 先产出产品稿与 GTM 简报 → Dev 依据产品稿实现页面并自检 → Ops 读取 PM 简报生成商业企划。每次交接都会在左栏留下 Handoff 记录，最终打包成一份 Artifact。
 
+配置真实模型后，三个智能体全部调用大模型：研发会按产品稿现场写出带交互的单文件页面，而不是套固定模板；未配置 Key 或调用失败时自动回退到内置模板，演示不中断。
+
 ## 核心流程
 
 ```mermaid
@@ -63,7 +65,7 @@ flowchart LR
 | --- | --- |
 | 展示层 | Next.js 15 App Router、React 19、Tailwind CSS、手写 shadcn/ui 风格组件（Radix Tabs / Slot + cva） |
 | 流式层 | `/api/generate` 基于 `ReadableStream` 输出 `data: {...}` SSE 帧，前端逐帧驱动节点状态与打字机 |
-| 编排层 | [generate.ts](src/lib/generate.ts) 以 async generator 顺序调度三个智能体，产出 meta / node:start / node:line / node:done / artifact 事件 |
+| 编排层 | [generate.ts](src/lib/generate.ts) 以 async generator 顺序调度三个智能体，产出 meta / node:start / node:line / node:done / artifact 事件；配置 Key 后 [llm-agents.ts](src/lib/llm-agents.ts) 调用真实模型，失败时逐环节回退模板 |
 | 行业知识 | [packs.ts](src/lib/packs.ts) 用关键词分类器把想法映射到 11 个行业 Pack，提供文案、定价、SEO、冷启动素材 |
 | 文案与人设 | [agents.ts](src/lib/agents.ts) 定义智能体、节点文案与 Business Plan 结构 |
 | 页面生成 | [landing.ts](src/lib/landing.ts) 拼装约 17KB 的自包含 HTML（内联 CSS/JS），可直接进 iframe 沙箱 |
@@ -122,14 +124,26 @@ cd Atoms_Demo
 
 服务器首次部署前放行 80 端口。如果宿主机已有 nginx 占用 80，先停掉它，或把 [docker-compose.yml](docker-compose.yml) 的端口改成 `127.0.0.1:8080:80` 再由宿主机反代。
 
-## 换成真实大模型
+## 接入真实大模型
 
-[generate.ts](src/lib/generate.ts) 是唯一的数据入口，事件协议保持不变即可无缝替换：
+三个智能体均已接入 OpenAI 兼容接口，只需配置环境变量，无需改代码：
 
-1. 把 `nodeLines()` / `buildBusinessPlan()` 的文案换成模型调用（PM 产出结构化产品稿，Dev 产出 HTML，Ops 读取 PM 简报产出企划）；
-2. 保留 `node:start` / `node:line` / `node:done` / `artifact` 事件，前端无需改动；
-3. `refine()` 可替换为返回同样 `MvpPatch` 结构的模型调用。
+```bash
+cp .env.example .env.local
+# 填入 LLM_API_KEY；默认示例为 DeepSeek，可换豆包、通义或任意兼容网关
+```
+
+| 变量 | 说明 |
+| --- | --- |
+| `LLM_BASE_URL` | 网关地址，需包含 `/v1` |
+| `LLM_API_KEY` | 不填则整体走本地 mock |
+| `LLM_MODEL` | 默认模型 |
+| `LLM_MODEL_PM` / `LLM_MODEL_DEV` / `LLM_MODEL_OPS` | 可选，为三个智能体分别指定模型 |
+
+调用方式：PM 产出结构化产品稿 → Dev 依据产品稿生成完整单文件 HTML（含至少一个真实交互）→ Ops 读取 PM 简报与自检结果产出企划。任一环节超时或返回异常时自动回退到内置模板，SSE 事件协议与前端完全不变。
+
+Docker 部署时把 `.env` 放在项目根目录即可，compose 会自动注入；改完配置执行 `./deploy.sh` 重建生效。
 
 ## 演示边界
 
-这是演示产品，明确**不做**：真实登录、真实支付、真实部署、数据库。数据保存在浏览器 localStorage，清理缓存或换设备会丢失；生成内容由 mock 规则驱动，仅用于展示架构与交互。
+这是演示产品，明确**不做**：真实登录、真实支付、真实部署、数据库。数据保存在浏览器 localStorage，清理缓存或换设备会丢失；未配置模型时生成内容由 mock 规则驱动，仅用于展示架构与交互。

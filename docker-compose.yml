@@ -6,6 +6,12 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_MODEL_PM: ${LLM_MODEL_PM:-}
+      LLM_MODEL_DEV: ${LLM_MODEL_DEV:-}
+      LLM_MODEL_OPS: ${LLM_MODEL_OPS:-}
     expose:
       - "3000"
     healthcheck:
